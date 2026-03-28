@@ -31,7 +31,7 @@ import {
   MagnifyingGlass,
   ArrowClockwise,
   FileText,
-  FolderNotch,
+  Folder,
 } from "@phosphor-icons/react";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -224,7 +224,7 @@ export default function ArchiveFiles() {
       return (
         <Center style={{ height: "200px" }}>
           <Stack align="center" spacing="xs">
-            <FolderNotch size={48} color={theme.colors.gray[5]} />
+            <Folder size={48} color={theme.colors.gray[5]} />
             <Text c="dimmed" size="lg">
               No archived files found!
             </Text>
@@ -336,7 +336,7 @@ export default function ArchiveFiles() {
       return (
         <Center style={{ height: "200px" }}>
           <Stack align="center" spacing="xs">
-            <FolderNotch size={48} color={theme.colors.gray[5]} />
+            <Folder size={48} color={theme.colors.gray[5]} />
             <Text color="dimmed" size="lg">
               No archived files found
             </Text>

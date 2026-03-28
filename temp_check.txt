@@ -1,0 +1,303 @@
+import React, { useState, useEffect } from "react";
+import { Container, Title, Paper, Table, Button, Grid, Badge, Group, Modal, TextInput, Select, Textarea, Checkbox } from "@mantine/core";
+import { useDisclosure } from '@mantine/hooks';
+import axios from "axios";
+import { host } from "../../routes/globalRoutes";
+import { notifications } from "@mantine/notifications";
+
+import VisitorRecords from './components/VisitorRecords';
+import Reports from './components/Reports';
+import SecurityPersonnel from './components/SecurityPersonnel';
+import VIPPermissions from './components/VIPPermissions';
+import VisitorMovement from './components/VisitorMovement';
+
+export default function VMSDashboard() {
+  const [visits, setVisits] = useState([]);
+  const [userRoles, setUserRoles] = useState([]);
+
+  // Modals state
+  const [registerOpened, { open: openRegister, close: closeRegister }] = useDisclosure(false);
+  const [verifyOpened, { open: openVerify, close: closeVerify }] = useDisclosure(false);
+  const [issuePassOpened, { open: openIssuePass, close: closeIssuePass }] = useDisclosure(false);
+  const [entryOpened, { open: openEntry, close: closeEntry }] = useDisclosure(false);
+  const [exitOpened, { open: openExit, close: closeExit }] = useDisclosure(false);
+  const [denyOpened, { open: openDeny, close: closeDeny }] = useDisclosure(false);
+  const [incidentOpened, { open: openIncident, close: closeIncident }] = useDisclosure(false);
+
+  // Admin/Supervisor Component Modals state
+  const [recordsOpened, { open: openRecords, close: closeRecords }] = useDisclosure(false);
+  const [reportsOpened, { open: openReports, close: closeReports }] = useDisclosure(false);
+  const [securityPersonnelOpened, { open: openSecurityPersonnel, close: closeSecurityPersonnel }] = useDisclosure(false);
+  const [vipPermissionOpened, { open: openVipPermission, close: closeVipPermission }] = useDisclosure(false);
+  const [movementOpened, { open: openMovement, close: closeMovement }] = useDisclosure(false);
+
+  const [activeVisitor, setActiveVisitor] = useState(null);
+  const [regForm, setRegForm] = useState({
+    full_name: '', id_number: '', id_type: 'aadhaar', contact_phone: '', purpose: '', host_name: '', host_department: ''
+  });
+
+  const [activeVisitId, setActiveVisitId] = useState(null);
+
+  // Forms state
+  const [verifyForm, setVerifyForm] = useState({ method: 'manual', result: true, notes: '' });
+  const [passForm, setPassForm] = useState({ authorized_zones: 'public' });
+  const [entryForm, setEntryForm] = useState({ gate_name: 'Main Gate', items_declared: '' });
+  const [exitForm, setExitForm] = useState({ gate_name: 'Main Gate' });
+  const [denyForm, setDenyForm] = useState({ reason: '', remarks: '', escalated: false });
+  const [incidentForm, setIncidentForm] = useState({ severity: 'low', issue_type: 'other', description: '' });
+
+  const fetchVisits = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await axios.get(`${host}/vms/recent/?limit=50`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      setVisits(res.data);
+    } catch (err) {
+      console.error("VMS Load Error", err);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const storedRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+      setUserRoles(storedRoles);
+    } catch (e) {
+      console.error(e);
+    }
+    fetchVisits();
+  }, []);
+
+  const openActionModal = (id, opener) => {
+    setActiveVisitId(id);
+    opener();
+  };
+
+  // Generic Submit Handler
+  const submitAction = async (endpoint, payload, successMsg, closeAction, fetchAfter = true) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.post(`${host}/vms/${endpoint}/`, payload, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      notifications.show({ title: 'Success', message: successMsg, color: 'blue' });
+      closeAction();
+      if (fetchAfter) fetchVisits();
+    } catch (err) {
+      console.error(err);
+      notifications.show({ title: 'Error', message: `Failed: ${err.response?.data?.error || err.message}`, color: 'red' });
+    }
+  };
+
+  const handleRegisterSubmit = () => {
+    submitAction('register', regForm, 'Visitor registered successfully!', closeRegister);
+    setRegForm({ full_name: '', id_number: '', id_type: 'aadhaar', contact_phone: '', purpose: '', host_name: '', host_department: '' });
+  };
+
+  const statusColors = {
+    'registered': 'yellow', 'id_verified': 'grape', 'pass_issued': 'cyan',
+    'inside': 'green', 'exited': 'gray', 'denied': 'red'
+  };
+
+  return (
+    <Container size="xl" mt="md">
+      <Group position="apart" align="flex-start" mb="md">
+        <Title order={2}>Visitor Management System (VMS)</Title>
+        <Group>
+          {userRoles.map(role => <Badge key={role} color="blue" size="lg">{role}</Badge>)}
+        </Group>
+      </Group>
+
+      {/* ADMIN CONTROLS */}
+      {userRoles.includes("Admin") && (
+        <Paper shadow="xs" p="md" withBorder mb="lg">
+          <Title order={4} mb="md">Administrator Actions</Title>
+          <Group>
+              <Button variant="outline" color="violet" onClick={openRecords}>View Visitor Records</Button>
+              <Button variant="outline" color="violet" onClick={openReports}>Generate Reports</Button>
+              <Button variant="outline" color="violet" onClick={openSecurityPersonnel}>Manage Security Personnel</Button>
+              <Button variant="outline" color="violet" onClick={openVipPermission}>Manage VIP Permission</Button>
+            </Group>
+          </Paper>
+        )}
+
+        {/* SUPERVISOR CONTROLS */}
+        {userRoles.includes("Security Supervisor") && (
+          <Paper shadow="xs" p="md" withBorder mb="lg">
+            <Title order={4} mb="md">Security Supervisor Actions</Title>
+            <Group>
+              <Button color="blue" onClick={openMovement}>Monitor Visitor Movement</Button>
+                <Button color="orange" onClick={openIncident}>Handle Security Issues</Button>
+                <Button color="red" variant="outline" onClick={() => notifications.show({ title: 'CRITICAL', message: 'Global Emergency Lockdown Triggered!', color: 'red' })}>Initiate Lockdown</Button>
+              </Group>
+            </Paper>
+          )}
+            <Button color="blue" onClick={openRegister}>Register Visitor</Button>
+            <Button color="yellow" variant="outline" onClick={() => notifications.show({ title: 'ID Checks', message: 'Ready to securely scan government ID (UC-002)...', color: 'yellow' })}>Verify Identity</Button>
+            <Button color="red" variant="outline" onClick={() => { setActiveVisitId(null); openDeny(); }}>Deny Entry</Button>
+            <Button color="orange" variant="light" onClick={openIncident}>Log Security Issue</Button>
+          </Group>
+        </Paper>
+      )}
+
+      <Paper shadow="xs" p="md" withBorder>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <Title order={4}>Recent Visits & Actions</Title>
+          <Button variant="light" size="xs" onClick={fetchVisits}>Refresh List</Button>
+        </div>
+
+        <Table striped highlightOnHover>
+          <thead>
+            <tr>
+              <th>ID #</th>
+              <th>Visitor Name</th>
+              <th>Host (Dept)</th>
+              <th>Purpose</th>
+              <th>Status</th>
+              {(userRoles.includes("Security Guard") || userRoles.includes("Admin") || userRoles.includes("Security Supervisor")) && <th>Context Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visits.length > 0 ? visits.map((v) => (
+              <tr key={v.id}>
+                <td>{v.visitor?.id_number || "-"}</td>
+                <td>{v.visitor?.full_name || "Unknown"}</td>
+                <td>{v.host_name} {v.host_department ? `(${v.host_department})`: ''}</td>
+                <td>{v.purpose}</td>
+                <td><Badge color={statusColors[v.status] || 'gray'}>{v.status.replace('_', ' ').toUpperCase()}</Badge></td>
+                {(userRoles.includes("Security Guard") || userRoles.includes("Admin") || userRoles.includes("Security Supervisor")) && (
+                  <td>
+                    <Group spacing="xs">
+                      {(userRoles.includes("Security Guard") || userRoles.includes("Security Supervisor") || userRoles.includes("Admin")) && v.status === 'registered' && (
+                        <>
+                          <Button size="xs" color="yellow" onClick={() => openActionModal(v.id, openVerify)}>Verify ID</Button>
+                          <Button size="xs" color="red" variant="outline" onClick={() => openActionModal(v.id, openDeny)}>Deny</Button>
+                        </>
+                      )}
+                      {(userRoles.includes("Security Guard") || userRoles.includes("Admin")) && v.status === 'id_verified' && (
+                        <>
+                          <Button size="xs" color="grape" onClick={() => openActionModal(v.id, openIssuePass)}>Issue Pass</Button>
+                          <Button size="xs" color="red" variant="outline" onClick={() => openActionModal(v.id, openDeny)}>Deny</Button>
+                        </>
+                      )}
+                      {(userRoles.includes("Security Guard") || userRoles.includes("Admin")) && v.status === 'pass_issued' && (
+                        <>
+                          <Button size="xs" color="teal" onClick={() => openActionModal(v.id, openEntry)}>Record Entry</Button>
+                          <Button size="xs" color="red" variant="outline" onClick={() => openActionModal(v.id, openDeny)}>Deny</Button>
+                        </>
+                      )}
+                      {(userRoles.includes("Security Guard") || userRoles.includes("Admin")) && v.status === 'inside' && (
+                        <Button size="xs" color="gray" variant="outline" onClick={() => openActionModal(v.id, openExit)}>Record Exit</Button>
+                      )}
+                      {userRoles.includes("Security Supervisor") && v.status !== 'exited' && v.status !== 'denied' && (
+                        <Button size="xs" color="orange" variant="light" onClick={() => openActionModal(v.id, openIncident)}>Flag Incident</Button>
+                      )}
+                    </Group>
+                  </td>
+                )}
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="6" style={{ textAlign: "center" }}>No recent visits found.</td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
+      </Paper>
+
+      {/* Register Visitor Modal */}
+      <Modal opened={registerOpened} onClose={closeRegister} title="Register Walk-in Visitor" size="lg">
+        <Grid>
+          <Grid.Col span={6}><TextInput label="Full Name" required value={regForm.full_name} onChange={(e) => setRegForm({...regForm, full_name: e.target.value})} /></Grid.Col>
+          <Grid.Col span={6}><TextInput label="ID Number" required value={regForm.id_number} onChange={(e) => setRegForm({...regForm, id_number: e.target.value})} /></Grid.Col>
+          <Grid.Col span={6}>
+            <Select label="ID Type" data={['aadhaar', 'passport', 'driver_license', 'national_id']} value={regForm.id_type} onChange={(val) => setRegForm({...regForm, id_type: val})} />
+          </Grid.Col>
+          <Grid.Col span={6}><TextInput label="Contact Phone" required value={regForm.contact_phone} onChange={(e) => setRegForm({...regForm, contact_phone: e.target.value})} /></Grid.Col>
+          <Grid.Col span={12}><Textarea label="Purpose of Visit" required value={regForm.purpose} onChange={(e) => setRegForm({...regForm, purpose: e.target.value})} /></Grid.Col>
+          <Grid.Col span={6}><TextInput label="Host Name" required value={regForm.host_name} onChange={(e) => setRegForm({...regForm, host_name: e.target.value})} /></Grid.Col>
+          <Grid.Col span={6}><TextInput label="Host Department" required value={regForm.host_department} onChange={(e) => setRegForm({...regForm, host_department: e.target.value})} /></Grid.Col>
+        </Grid>
+        <Group position="right" mt="md">
+          <Button onClick={handleRegisterSubmit}>Submit Registration</Button>
+        </Group>
+      </Modal>
+
+      {/* Verify ID Modal */}
+      <Modal opened={verifyOpened} onClose={closeVerify} title="Verify ID for Visit">
+        <Select label="Verification Method" data={['manual', 'digital', 'biometric']} value={verifyForm.method} onChange={(val) => setVerifyForm({...verifyForm, method: val})} mb="sm" />
+        <Textarea label="Notes (Optional)" placeholder="Any irregularities found?" value={verifyForm.notes} onChange={(e) => setVerifyForm({...verifyForm, notes: e.target.value})} mb="sm" />
+        <Checkbox label="Verification Successful?" checked={verifyForm.result} onChange={(e) => setVerifyForm({...verifyForm, result: e.currentTarget.checked})} mb="md" />
+        <Group position="right">
+          <Button color={verifyForm.result ? "blue" : "red"} onClick={() => submitAction('verify', { visit_id: activeVisitId, ...verifyForm }, 'Verification logged!', closeVerify)}>Submit Verification</Button>
+        </Group>
+      </Modal>
+
+      {/* Issue Pass Modal */}
+      <Modal opened={issuePassOpened} onClose={closeIssuePass} title="Issue Visitor Pass">
+        <TextInput label="Authorized Zones" value={passForm.authorized_zones} onChange={(e) => setPassForm({...passForm, authorized_zones: e.target.value})} mb="md" />
+        <Group position="right">
+          <Button color="grape" onClick={() => submitAction('pass', { visit_id: activeVisitId, ...passForm }, 'Pass issued successfully!', closeIssuePass)}>Issue VMS Pass</Button>
+        </Group>
+      </Modal>
+
+      {/* Record Entry Modal */}
+      <Modal opened={entryOpened} onClose={closeEntry} title="Record Physical Entry">
+        <Select label="Gate Name" data={['Main Gate', 'Side Gate', 'VIP Gate']} value={entryForm.gate_name} onChange={(v) => setEntryForm({...entryForm, gate_name: v})} mb="sm" />
+        <Textarea label="Items Declared (Optional)" value={entryForm.items_declared} onChange={(e) => setEntryForm({...entryForm, items_declared: e.target.value})} mb="md" />
+        <Group position="right">
+          <Button color="green" onClick={() => submitAction('entry', { visit_id: activeVisitId, ...entryForm }, 'Entry Recorded!', closeEntry)}>Confirm Entry</Button>
+        </Group>
+      </Modal>
+
+      {/* Record Exit Modal */}
+      <Modal opened={exitOpened} onClose={closeExit} title="Record Physical Exit">
+        <Select label="Gate Name" data={['Main Gate', 'Side Gate', 'VIP Gate']} value={exitForm.gate_name} onChange={(v) => setExitForm({...exitForm, gate_name: v})} mb="md" />
+        <Group position="right">
+          <Button color="gray" onClick={() => submitAction('exit', { visit_id: activeVisitId, ...exitForm }, 'Exit Recorded!', closeExit)}>Confirm Exit</Button>
+        </Group>
+      </Modal>
+
+      {/* Deny Entry Modal */}
+      <Modal opened={denyOpened} onClose={closeDeny} title="Deny Entry to Visitor">
+        <TextInput label="Primary Reason" required value={denyForm.reason} onChange={(e) => setDenyForm({...denyForm, reason: e.target.value})} mb="sm" />
+        <Textarea label="Additional Remarks" value={denyForm.remarks} onChange={(e) => setDenyForm({...denyForm, remarks: e.target.value})} mb="sm" />
+        <Checkbox label="Escalated to Supervisor?" checked={denyForm.escalated} onChange={(e) => setDenyForm({...denyForm, escalated: e.currentTarget.checked})} mb="md" />
+        <Group position="right">
+          <Button color="red" onClick={() => submitAction('deny', { visit_id: activeVisitId, ...denyForm }, 'Entry Denied Successfully!', closeDeny)}>Deny Entry permanently</Button>
+        </Group>
+      </Modal>
+
+      {/* Security Incident Modal */}
+      <Modal opened={incidentOpened} onClose={closeIncident} title="Log Security Incident">
+        <Select label="Severity" data={['low', 'medium', 'high', 'critical']} value={incidentForm.severity} onChange={(v) => setIncidentForm({...incidentForm, severity: v})} mb="sm" />
+        <Select label="Issue Type" data={['unauthorized_access', 'property_damage', 'harassment', 'lost_badge', 'other']} value={incidentForm.issue_type} onChange={(v) => setIncidentForm({...incidentForm, issue_type: v})} mb="sm" />
+        <Textarea label="Incident Description" required value={incidentForm.description} onChange={(e) => setIncidentForm({...incidentForm, description: e.target.value})} mb="md" />
+        <Group position="right">
+          <Button color="orange" onClick={() => submitAction('incidents', { visit_id: activeVisitId || null, ...incidentForm }, 'Security Incident logged!', closeIncident)}>File Report</Button>
+        </Group>
+      </Modal>
+        {/* --- SUPPLEMENTARY COMPONENT MODALS ---  */}
+        <Modal opened={recordsOpened} onClose={closeRecords} title="Visitor Records" size="xl">
+          <VisitorRecords />
+        </Modal>
+
+        <Modal opened={reportsOpened} onClose={closeReports} title="VMS Reports" size="lg">
+          <Reports />
+        </Modal>
+
+        <Modal opened={securityPersonnelOpened} onClose={closeSecurityPersonnel} title="Security Roster" size="xl">
+          <SecurityPersonnel />
+        </Modal>
+
+        <Modal opened={vipPermissionOpened} onClose={closeVipPermission} title="VIP Permissions" size="lg">
+          <VIPPermissions />
+        </Modal>
+
+        <Modal opened={movementOpened} onClose={closeMovement} title="Visitor Movement Log" size="lg">
+          <VisitorMovement />
+        </Modal>
+    </Container>
+  );
+}
+

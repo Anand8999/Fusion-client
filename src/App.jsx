@@ -48,6 +48,8 @@ const IwdWorkPage = lazy(
 const Dashboard = lazy(
   () => import("./Modules/Dashboard/dashboardNotifications"),
 );
+
+const VMSDashboard = lazy(() => import("./Modules/VMS/VMSDashboard"));
 const ComplaintSystem = lazy(
   () => import("./Modules/ComplaintManagement/index"),
 );
@@ -57,6 +59,7 @@ const Profile = lazy(
 const LoginPage = lazy(() => import("./pages/login"));
 const ForgotPassword = lazy(() => import("./pages/forgotPassword"));
 const ResetPasswordConfirm = lazy(() => import("./pages/resetPasswordConfirm"));
+const VMSReceipt = lazy(() => import("./Modules/VMS/VMSReceipt"));
 const AcademicPage = lazy(() => import("./Modules/Academic/index"));
 const ValidateAuth = lazy(() => import("./helper/validateauth"));
 const HR = lazy(() => import("./Modules/HR/index"));
@@ -129,6 +132,7 @@ export default function App() {
       {![
         "/accounts/login",
         "/reset-password",
+        location.pathname.startsWith("/vms-receipt") ? location.pathname : "",
         location.pathname.startsWith("/reset-password-confirm/")
           ? location.pathname
           : "",
@@ -137,6 +141,14 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<Navigate to="/accounts/login" replace />} />
+        <Route
+          path="/vms-receipt"
+          element={
+            <Suspense fallback={<div>Loading .... </div>}>
+              <VMSReceipt />
+            </Suspense>
+          }
+        />
         <Route
           path="/dashboard"
           element={
@@ -562,6 +574,16 @@ export default function App() {
             <Layout>
               <Suspense fallback={<div>Loading .... </div>}>
                 <OtherAcadProcedures />
+              </Suspense>
+            </Layout>
+          }
+        />
+        <Route
+          path="/vms/*"
+          element={
+            <Layout>
+              <Suspense fallback={<div>Loading .... </div>}>
+                <VMSDashboard />
               </Suspense>
             </Layout>
           }

@@ -31,6 +31,7 @@ import {
   Gear as SettingsIcon,
   AmazonLogo as CourseManagementIcon,
   Scroll as PatentIcon,
+  IdentificationCard as VisitorIcon,
   CaretRight,
   CaretLeft,
 } from "@phosphor-icons/react";
@@ -67,6 +68,7 @@ function SidebarContent({ isCollapsed, toggleSidebar }) {
     "hr",
     "course_management",
     "patent_management",
+    "vms",
   ];
 
   const Modules = [
@@ -206,6 +208,12 @@ function SidebarContent({ isCollapsed, toggleSidebar }) {
       id: "patent_management",
       icon: <PatentIcon size={18} />,
       url: "/patent/",
+    },
+    {
+      label: "Visitor Management",
+      id: "vms",
+      icon: <VisitorIcon size={18} />,
+      url: "/vms/",
     },
   ];
 

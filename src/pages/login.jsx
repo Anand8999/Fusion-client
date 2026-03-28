@@ -24,7 +24,18 @@ function LoginPage() {
 
   useEffect(() => {
     if (localStorage.getItem("authToken")) {
-      navigate("/dashboard");
+      let roles = [];
+      try {
+        roles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+      const vmsRoles = ["Security Guard", "Security Supervisor", "Admin"];
+      if (roles && roles.some((role) => vmsRoles.includes(role))) {
+        navigate("/vms");
+      } else {
+        navigate("/dashboard");
+      }
     }
   }, [navigate]);
 
@@ -46,10 +57,19 @@ function LoginPage() {
           message: "You have been successfully logged in.",
           color: "green",
         });
-        const { token } = response.data;
+        const { token, roles } = response.data;
 
         localStorage.setItem("authToken", token);
-        navigate("/dashboard");
+        if (roles) {
+          localStorage.setItem("userRoles", JSON.stringify(roles));
+        }
+
+        const vmsRoles = ["Security Guard", "Security Supervisor", "Admin"];
+        if (roles && roles.some((role) => vmsRoles.includes(role))) {
+          navigate("/vms");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);
